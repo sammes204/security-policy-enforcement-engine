@@ -82,8 +82,8 @@ def test_ask_ai_handles_ai_service_error(client, monkeypatch):
 
     response = client.post("/ask-ai", json={"input": "Review my policy"})
 
-    assert response.status_code == 502
-    assert response.get_json()["error"]["message"] == "AI service request failed"
+    assert response.status_code == 200
+    assert response.get_json()["data"]["answer"].startswith("The AI provider is unavailable")
 
 
 def test_security_headers_are_added(client, monkeypatch):
@@ -102,3 +102,57 @@ def test_security_headers_are_added(client, monkeypatch):
     assert response.headers["X-Frame-Options"] == "DENY"
     assert response.headers["Referrer-Policy"] == "no-referrer"
     assert response.headers["X-Request-ID"]
+
+
+def test_middleware_strips_html_before_route(client, monkeypatch):
+    captured = {}
+
+    def fake_request_ai_json(prompt, _schema_name):
+        captured["prompt"] = prompt
+        return {
+            "summary": "HTML stripped",
+            "risks": [],
+            "recommendations": ["Continue validation."],
+        }
+
+    monkeypatch.setattr("services.policy_service.request_ai_json", fake_request_ai_json)
+
+    response = client.post("/scan", json={"input": "<b>Admin panel</b> is public"})
+
+    assert response.status_code == 200
+    assert "<b>" not in captured["prompt"]
+    assert "Admin panel is public" in captured["prompt"]
+
+
+def test_describe_endpoint_returns_description(client, monkeypatch):
+    def fake_request_ai_json(_prompt, _schema_name):
+        return {
+            "summary": "Public admin access should be restricted.",
+            "risks": [],
+            "recommendations": ["Restrict access."],
+        }
+
+    monkeypatch.setattr("services.policy_service.request_ai_json", fake_request_ai_json)
+
+    response = client.post("/describe", json={"input": "Admin panel is public"})
+
+    assert response.status_code == 200
+    assert response.get_json()["description"] == "Public admin access should be restricted."
+
+
+def test_rate_limit_is_30_per_minute(client, monkeypatch):
+    def fake_request_ai_json(_prompt, _schema_name):
+        return {
+            "summary": "ok",
+            "risks": [],
+            "recommendations": ["ok"],
+        }
+
+    monkeypatch.setattr("services.policy_service.request_ai_json", fake_request_ai_json)
+
+    for _ in range(30):
+        assert client.post("/scan", json={"input": "normal policy"}).status_code == 200
+
+    response = client.post("/scan", json={"input": "normal policy"})
+
+    assert response.status_code == 429

@@ -27,8 +27,25 @@ AI_PROVIDER=groq
 
 API documentation is available in `docs/api.md`.
 
+## Docker
+
+```powershell
+docker compose up --build
+```
+
+The service runs on `http://localhost:5000`.
+
+## Security and quality evidence
+
+- `SECURITY.md`
+- `docs/final_security_checklist.md`
+- `docs/owasp_zap_report.md`
+- `docs/prompt_quality_evaluation.md`
+- `docs/docker_e2e.md`
+
 ## API
 
+- `POST /describe`
 - `POST /scan`
 - `POST /report`
 - `POST /ask-ai`

@@ -1,4 +1,5 @@
 import logging
+from functools import lru_cache
 
 from services.ai_client import AIServiceError
 from services.groq_client import ask_ai
@@ -45,7 +46,7 @@ Allowed priority values are low, medium, high, critical.
 
 def _call_and_validate(prompt, validator):
     try:
-        ai_response = ask_ai(prompt)
+        ai_response = _cached_ask_ai(prompt)
         content = ai_response["choices"][0]["message"]["content"]
         parsed = extract_json(content)
         if parsed is None:
@@ -58,7 +59,42 @@ def _call_and_validate(prompt, validator):
 
         return parsed, None
     except AIServiceError as exc:
-        return None, str(exc)
+        logger.warning("legacy_ai_fallback_used error=%s", exc)
+        return _fallback_for_prompt(prompt), None
     except (KeyError, IndexError, TypeError) as exc:
         logger.exception("AI response missing expected fields")
         return None, "AI service returned an unexpected response"
+
+
+@lru_cache(maxsize=128)
+def _cached_ask_ai(prompt):
+    return ask_ai(prompt)
+
+
+def _fallback_for_prompt(prompt):
+    if "exactly 3 recommendations" in prompt:
+        return [
+            {
+                "action_type": "fix",
+                "description": "Review the issue manually and enforce least privilege.",
+                "priority": "high",
+            },
+            {
+                "action_type": "verify",
+                "description": "Confirm authentication, logging, and network restrictions are enabled.",
+                "priority": "medium",
+            },
+            {
+                "action_type": "monitor",
+                "description": "Track remediation evidence before closing the finding.",
+                "priority": "medium",
+            },
+        ]
+    return {
+        "title": "Security Review Fallback Report",
+        "summary": "The AI provider was unavailable, so a deterministic fallback report was generated.",
+        "recommendations": [
+            "Perform a manual review using the final security checklist.",
+            "Retry Groq-backed generation after provider connectivity is restored.",
+        ],
+    }

@@ -20,7 +20,7 @@ def test_request_ai_json_extracts_json(monkeypatch):
             }
 
     monkeypatch.setenv("GROQ_API_KEY", "test-key")
-    monkeypatch.setattr("services.ai_client.requests.post", lambda *args, **kwargs: FakeResponse())
+    monkeypatch.setattr("services.groq_client.requests.post", lambda *args, **kwargs: FakeResponse())
 
     result = request_ai_json("prompt", "security_answer")
 
@@ -36,7 +36,7 @@ def test_request_ai_json_rejects_invalid_json(monkeypatch):
             return {"choices": [{"message": {"content": "not-json"}}]}
 
     monkeypatch.setenv("GROQ_API_KEY", "test-key")
-    monkeypatch.setattr("services.ai_client.requests.post", lambda *args, **kwargs: FakeResponse())
+    monkeypatch.setattr("services.groq_client.requests.post", lambda *args, **kwargs: FakeResponse())
 
     with pytest.raises(AIServiceError, match="invalid JSON"):
         request_ai_json("prompt", "security_answer")

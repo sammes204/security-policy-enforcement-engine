@@ -37,6 +37,25 @@ def sanitize_input(value):
     return text
 
 
+def sanitize_json_payload(payload):
+    if isinstance(payload, dict):
+        return {key: sanitize_json_payload(value) for key, value in payload.items()}
+    if isinstance(payload, list):
+        return [sanitize_json_payload(value) for value in payload]
+    if isinstance(payload, str):
+        return sanitize_input(payload)
+    return payload
+
+
+def find_malicious_input(payload):
+    for value in _walk_strings(payload):
+        if is_prompt_injection_attempt(value):
+            return "Potential prompt injection detected"
+        if is_sql_injection_attempt(value):
+            return "Potential SQL injection detected"
+    return None
+
+
 def is_prompt_injection_attempt(text):
     lowered = text.lower()
     return any(re.search(pattern, lowered) for pattern in PROMPT_INJECTION_PATTERNS)
@@ -45,3 +64,14 @@ def is_prompt_injection_attempt(text):
 def is_sql_injection_attempt(text):
     lowered = text.lower()
     return any(re.search(pattern, lowered) for pattern in SQL_INJECTION_PATTERNS)
+
+
+def _walk_strings(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from _walk_strings(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _walk_strings(item)

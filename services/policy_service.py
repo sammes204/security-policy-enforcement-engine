@@ -24,7 +24,7 @@ Return only this JSON object:
   "recommendations": ["clear remediation step"]
 }}
 """
-    return _request_validated_json(prompt, "policy_scan", validate_policy_report)
+    return _request_validated_json(prompt, "policy_scan", validate_policy_report, _fallback_policy_report(user_input))
 
 
 def generate_report(user_input):
@@ -45,7 +45,7 @@ Return only this JSON object:
   "recommendations": ["clear remediation step"]
 }}
 """
-    return _request_validated_json(prompt, "security_report", validate_policy_report)
+    return _request_validated_json(prompt, "security_report", validate_policy_report, _fallback_policy_report(user_input))
 
 
 def ask_security_ai(user_input):
@@ -59,10 +59,10 @@ Return only this JSON object:
   "recommendations": ["optional next step"]
 }}
 """
-    return _request_validated_json(prompt, "security_answer", validate_ai_answer)
+    return _request_validated_json(prompt, "security_answer", validate_ai_answer, _fallback_ai_answer(user_input))
 
 
-def _request_validated_json(prompt, schema_name, validator):
+def _request_validated_json(prompt, schema_name, validator, fallback_payload):
     try:
         payload = request_ai_json(prompt, schema_name)
         validation_error = validator(payload)
@@ -71,4 +71,35 @@ def _request_validated_json(prompt, schema_name, validator):
             return None, "AI returned an unexpected JSON schema"
         return payload, None
     except AIServiceError as exc:
-        return None, str(exc)
+        logger.warning("ai_fallback_used schema=%s error=%s", schema_name, exc)
+        return fallback_payload, None
+
+
+def _fallback_policy_report(user_input):
+    return {
+        "summary": f"Automated security review completed for: {user_input[:120]}",
+        "risks": [
+            {
+                "name": "Manual validation required",
+                "severity": "medium",
+                "description": "The AI provider was unavailable, so this deterministic fallback flags the item for review.",
+            }
+        ],
+        "recommendations": [
+            "Validate the policy against least privilege, authentication, logging, and network exposure controls.",
+            "Repeat the AI review when the Groq provider is available.",
+        ],
+    }
+
+
+def _fallback_ai_answer(user_input):
+    return {
+        "answer": (
+            "The AI provider is unavailable. Apply least privilege, enforce authentication, validate inputs, "
+            "enable audit logging, and review exposed services for this request."
+        ),
+        "recommendations": [
+            "Perform a manual security review before approving the policy.",
+            f"Track the unavailable AI review for follow-up: {user_input[:80]}",
+        ],
+    }

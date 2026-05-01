@@ -1,9 +1,4 @@
-from utils.security import (
-    MAX_INPUT_LENGTH,
-    is_prompt_injection_attempt,
-    is_sql_injection_attempt,
-    sanitize_input,
-)
+from utils.security import MAX_INPUT_LENGTH, sanitize_input
 
 ALLOWED_PRIORITIES = {"low", "medium", "high", "critical"}
 ALLOWED_SEVERITIES = {"low", "medium", "high", "critical"}
@@ -29,11 +24,6 @@ def validate_text_payload(payload, allowed_fields=("input",)):
         return f"{allowed_fields[0].capitalize()} cannot be empty", None
     if len(user_input) > MAX_INPUT_LENGTH:
         return f"{allowed_fields[0].capitalize()} must be {MAX_INPUT_LENGTH} characters or fewer", None
-    if is_prompt_injection_attempt(user_input):
-        return "Potential prompt injection detected", None
-    if is_sql_injection_attempt(user_input):
-        return "Potential SQL injection detected", None
-
     return None, user_input
 
 

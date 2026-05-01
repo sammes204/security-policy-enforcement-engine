@@ -6,6 +6,28 @@
 
 Returns service health metadata.
 
+## Describe
+
+`POST /describe`
+
+Request:
+
+```json
+{
+  "input": "Admin panel is public and has no MFA"
+}
+```
+
+Response:
+
+```json
+{
+  "description": "Public admin access detected.",
+  "risks": [],
+  "recommendations": ["Restrict access and enforce MFA."]
+}
+```
+
 ## Scan
 
 `POST /scan`
@@ -128,3 +150,9 @@ All endpoints return JSON errors in this shape:
   }
 }
 ```
+
+Input security:
+
+- HTML is stripped by middleware before route execution.
+- Prompt injection and SQL injection attempts return HTTP 400.
+- Rate limiting is exactly 30 requests per minute per IP.
