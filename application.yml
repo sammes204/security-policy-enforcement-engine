@@ -1,0 +1,29 @@
+jwt:
+  secret: ${JWT_SECRET}
+  expiry-ms: ${JWT_EXPIRY_MS:86400000}
+ 
+ai:
+  service:
+    url: ${AI_SERVICE_URL:http://localhost:5000}
+    timeout-ms: 10000
+ 
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+ 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+ 
+logging:
+  level:
+    com.internship.tool: DEBUG
+    org.springframework.security: INFO
